@@ -1,0 +1,231 @@
+# java 透明化 cache 实现 #
+简单实现了一个透明化的Cache机制，使用这种方式，可以尽可能的避免在业务逻辑中出现硬编码的Cache操作代码。主要的思路为：
+
+- 针对数据的操作应该尽量作为一个独立的方法存在，这样才能应用透明化cache机制
+- 利用Spring的 BeanFactoryPostProcessor 扩展点，在bean初始化之前利用cglib对bean进行代理。
+- 使用redis作为缓存存储，可以利用其list数据类型。
+
+使用方式如下：
+
+
+   `
+	@Cache(key = @CacheKey(template = KEY_LIKECOUNT, els = {"#p[0]", "#p[1]"}))
+    public LikeCount getCount(String appId, String contentId) {}
+   `
+
+
+   #p0表示取方法的第一个参数
+
+整个：
+
+     `@CacheKey(template = "LIKECOUNT/%s/%s", els = {"#p[0]","#p[1]"})`
+
+这一段其实就是 
+    `String.format("LIKECOUNT/%s/%s", appId, contentId)`
+
+expire参数用来控制缓存的时间，cacheNull参数用来控制，如果返回的结果为null时，是否缓存改结果。
+
+如果一个方法的缓存key非常简单，不需要从参数生成，可以简单的使用：
+
+   ` @SimpleCache(key = "TEST", expire = 3000, cacheNull = true)`
+如果该方法返回的是一个List类型的数据，则可以使用：
+
+ 
+ `@ListedCache(key = @CacheKey(template = "ACTIVITY/%s", els = {"#p[0]"}), offsetIndex = 1, limitIndex = 2)`
+
+其中offsetIdex和limitIndex对应查询是的分页参数。 比如查询 offset=10， limit=10的数据，将首先尝试从缓存中加载，如果缓存中仅有18条数据，则首先从缓存中加载 offset=10， limit=8的数据，然后将修改传递给方法调用的参数为 offset=18， limit =2 ，将剩余的数据补充上。
+还支持另外两个标注：
+
+        /***
+            写入缓存，writeReutun表示将方法的返回结果写入缓存。writeParameter表示将parameterIndex 制定的参数写入缓存
+        ***/
+       @WriteCache(key = @CacheKey(template = "ACTIVITY/%s", els = {"#p[0]"}), writeReturn=true)
+       @WriteCache(key = @CacheKey(template = "ACTIVITY/%s", els = {"#p[0]"}), writeParameter=true, writeReturn = false, parameterIndex = 0)
+
+       /***
+           将缓存写入list类型的缓存
+       ***/
+       @WriteListCache(key = @CacheKey(template = "ACTIVITY/%s", els = {"#p[0]"}),writeParameter = true, writeReturn = false, parameterIndex = 0)
+如果需要删除缓存，则可以使用：
+
+   @RemoveCache
+
+## redis主从支持 ##
+
+redis proxy增加主从支持，所有写操作通过主进行，读操作通过从进行。配置如下：
+
+ <bean id="masterRedisClient" class="com.skymobi.sns.cache.redis.RedisClient">
+        <constructor-arg value="${redis.url}"/>
+    </bean>
+
+    <bean id="slaveRedisClient" class="com.skymobi.sns.cache.redis.RedisClient">
+        <constructor-arg value="${redis-slave.url}"/>
+    </bean>
+
+    <bean id="layerCachePactory" class="com.skymobi.sns.cache.layer.LayerInterceptorFactory">
+        <constructor-arg ref="masterRedisClient"/>
+        <constructor-arg ref="slaveRedisClient"/>
+    </bean>
+同时cacheproxy配置中增加缓存类型设定，可以为不同的场景指定使用不同类型的缓存，比如在有列表类型数据时使用redis，普通数据直接使用memcached。配置如下：
+
+    <bean id="cacheProxy" class="com.skymobi.sns.cache.EasyCacheProxy">
+        <constructor-arg ref="layerCachePactory"/>
+        <property name="factories">
+            <map>
+                <entry key="default" value-ref="layerCachePactory"></entry>
+                <entry key="memcached" value-ref="memcachedFactory"></entry>
+            </map>
+        </property>
+    </bean>
+此时如果在service类中直接使用@CacheProxy注解，默认将采用 default指定的缓存。
+如果使用
+
+   @CacheProxy(type = "memcached")
+   public class SpecialUserServiceImpl implements SpecialUserService {}
+则在该service中将使用memcached作为缓存
+
+## 数据切分支持 ##
+
+增加对一个根据key的规则，将数据划分到不同服务器的功能。
+同时提供一个工具，在规则重划分时进行数据迁移。
+
+如下：
+
+        KeyRouter keyRouter = new DefaultKeyRouter("172.16.3.214:6379",
+                ImmutableMap.of("SNS/TEST1/.*", "172.16.3.214:6379",
+                        "SNS/TEST2/.*", "172.16.3.214:6389" 
+                ));
+        RedisClient client = new RedisClient(keyRouter);
+        client.zadd("SNS/TEST1/1", "t3", 3.0);
+        client.zadd("SNS/TEST2/2", "t1", 10.0);
+        RedisClient client1 = new RedisClient("172.16.3.214:6379");
+        RedisClient client2 = new RedisClient("172.16.3.214:6389");
+        assertFalse(client1.exists("SNS/TEST2/2"));  //"SNS/TEST2/2" 只会出现在172.16.3.214:6389上
+        assertFalse(client2.exists("SNS/TEST1/1"));   //"SNS/TEST1/1" 只会出现在172.16.3.214:6379上
+迁移数据：
+
+        RedisReplicationTool.copy("172.16.3.214:6379", "172.16.3.214:6389", "SNS/TEST1/*");
+        RedisReplicationTool.copy("172.16.3.214:6389", "172.16.3.214:6379", "SNS/TEST2/*");
+
+
+## 代码重构 ##
+
+代码做了大的重构，简单清晰了很多。
+移除不需要的factory类
+增加一个混合缓存类型，现在可以在Cache注解中为每一个cache指定要采用的缓存类型
+移除Cache注解中的layer属性。
+暂时放弃对本地cache的支持
+现在最完整的使用方式下，配置文件应该是这样的:
+
+ <bean id="memcachedClient" class="net.spy.memcached.spring.MemcachedClientFactoryBean">
+
+        <property name="servers" value="${cache.server}"/>
+        <property name="protocol" value="BINARY"/>
+        <property name="transcoder">
+            <bean class="net.spy.memcached.transcoders.SerializingTranscoder">
+                <property name="compressionThreshold" value="1024"/>
+            </bean>
+        </property>
+        <property name="opTimeout" value="1000"/>
+        <property name="timeoutExceptionThreshold" value="1998"/>
+        <property name="hashAlg" value="KETAMA_HASH"/>
+        <property name="locatorType" value="CONSISTENT"/>
+        <property name="failureMode" value="Redistribute"/>
+        <property name="useNagleAlgorithm" value="false"/>
+    </bean>
+
+    <bean id="masterRedisClient" class="com.skymobi.sns.cache.redis.RedisClient">
+        <constructor-arg value="${redis.url}"/>
+    </bean>
+
+    <bean id="slaveRedisClient" class="com.skymobi.sns.cache.redis.RedisClient">
+        <constructor-arg value="${redis-slave.url}"/>
+    </bean>
+
+    <bean id="redisInterceptor" class="com.skymobi.sns.cache.redis.RedisInterceptor">
+        <constructor-arg ref="masterRedisClient"/>
+        <constructor-arg ref="slaveRedisClient"/>
+    </bean>
+
+    <bean id="memcachedInterceptor" class="com.skymobi.sns.cache.memcached.MemcachedInterceptor">
+        <constructor-arg ref="memcachedClient"/>
+    </bean>
+
+    <bean id="hybridInterceptor" class="com.skymobi.sns.cache.hybrid.HybridInterceptor">
+        <property name="defaultInterceptor" ref="redisInterceptor"/>
+        <property name="interceptors">
+            <map>
+                <entry key="default" value-ref="redisInterceptor"></entry>
+                <entry key="memcached" value-ref="memcachedInterceptor"></entry>
+            </map>
+        </property>
+    </bean>
+
+    <bean id="cacheProxy" class="com.skymobi.sns.cache.EasyCacheProxy">
+        <constructor-arg ref="hybridInterceptor"/>
+        <property name="interceptors">
+            <map>
+                <entry key="default" value-ref="hybridInterceptor"></entry>
+                <entry key="memcached" value-ref="memcachedInterceptor"></entry>
+            </map>
+        </property>
+    </bean>
+如果使用了HybridInterceptor类型，则可以为每个cache指定不同的缓存类型：
+
+@WriteCache(key = @CacheKey(template = KEY_LIKECOUNT, els = {"#p[0].appId", "#p[0].contentId"}), type = "memcached")
+
+## 切分功能改进 ##
+
+Cache代码进行了修改，升级到1.1.0.
+1. 增加了两个redis缓存清理和迁移的groovy脚本
+2. KeyRoute增加了一个FunctionRoute的实现。现在可以自定义函数来对key进行处理。默认提供了取模的实现。常见的场景是按照skyid取模，将不同用户的数据存储到不同的服务器上。
+比如 有服务器s1,s2,s3,s4 4台 ，按skyid 123456 % 4 = 0 ，则skyid=123456的用户数据应该保存到 s1 这台server上。
+使用方式如下：
+
+        Function function = new ModFunction(4);
+        FunctionRouter keyRouter = new FunctionRouter(
+                ImmutableMap.of(
+                        "SNS/TEST1/(\\d+)", function
+        ));
+        keyRouter.setHosts(Lists.newArrayList(
+                "172.16.3.214:6379", "172.16.3.215:6379" ,"172.16.3.216:6379" ,"172.16.3.217:6379" 
+        ));
+        keyRouter.setDefaultHost("172.16.3.214:6379"); 
+        String host = keyRouter.getHost("SNS/TEST1/123456");
+        assertEquals("172.16.3.214:6379", host);
+        host = keyRouter.getHost("SNS/TEST1/123457");
+        assertEquals("172.16.3.215:6379", host);
+        host = keyRouter.getHost("SNS/TEST1/123458");
+        assertEquals("172.16.3.216:6379", host);
+        host = keyRouter.getHost("SNS/TEST1/123459");
+        assertEquals("172.16.3.217:6379", host);
+        host = keyRouter.getHost("SNS/TEST1/123460");
+        assertEquals("172.16.3.214:6379", host);
+        RedisClient client = new RedisClient(keyRouter);
+        client.set("SNS/TEST1/123456", 1);
+        int v = client.get("SNS/TEST1/123456", Integer.class);
+        assertEquals(1, v);
+        try{
+            client.set("SNS/TEST1/123457", 1);
+        }catch (Exception e){
+            assertEquals(JedisConnectionException.class,e.getClass());
+        }
+
+## key编写方式改进 ##
+1.1.1版本。
+参照Spring3.1的实现，改进了CacheKey的定义，现在可以这样：
+
+@Cache(key=@CacheKey(template="USER/${p0}"))
+
+expire现在支持用字符串表达式来指定，如下：
+
+exireTime = "1h"
+
+可以使用的方式有
+1d ---> 1天
+
+1h ---> 1小时
+
+1mn ---> 1分钟
+
+1s --> 1秒
