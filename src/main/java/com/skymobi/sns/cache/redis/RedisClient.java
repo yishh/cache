@@ -555,7 +555,7 @@ public class RedisClient {
     }
 
     public static <T> byte[] toByte(T o, boolean iskey) {
-        if (iskey && o instanceof String) {
+        if (iskey || o instanceof String) {
             return SafeEncoder.encode((String) o);
         }
         if (o == null) {
