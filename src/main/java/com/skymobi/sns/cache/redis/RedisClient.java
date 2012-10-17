@@ -612,7 +612,7 @@ public class RedisClient {
         if (ClassUtils.isPrimitiveOrWrapper(c)) {
             if (c.equals(Long.class) || c.equals(long.class)) {
                 if (bytes == null || bytes.length == 0) {
-                    return (Long) (-1L);
+                    return null;
                 }
                 return (Long) Long.parseLong(SafeEncoder.encode(bytes));
             }
@@ -639,13 +639,13 @@ public class RedisClient {
             }
             if (c.equals(Integer.class) || c.equals(int.class)) {
                 if (bytes == null || bytes.length == 0) {
-                    return (Integer) (-1);
+                    return null;
                 }
                 return (Integer) Integer.parseInt(SafeEncoder.encode(bytes));
             }
             if (c.equals(Short.class) || c.equals(short.class)) {
                 if (bytes == null || bytes.length == 0) {
-                    return -1;
+                    return null;
                 }
                 return (Short) Short.parseShort(SafeEncoder.encode(bytes));
             }
