@@ -14,7 +14,7 @@ import java.lang.annotation.*;
 @Inherited
 public @interface RemoveCache {
     //    String simpleKey() default "";
-    CacheKey key();
+    CacheKey[] key();
 
     String type() default "";
 

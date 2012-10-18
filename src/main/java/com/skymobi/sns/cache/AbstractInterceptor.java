@@ -75,7 +75,7 @@ public abstract class AbstractInterceptor implements CacheInterceptor {
                 logger.info("set to cache error:" + e.getCause());
             }
         }
-        if(cached instanceof NullCachedObject){
+        if (cached instanceof NullCachedObject) {
             cached = null;
             logger.debug("cached [{}] is null", key);
         }
@@ -174,16 +174,23 @@ public abstract class AbstractInterceptor implements CacheInterceptor {
         return returnVal;
     }
 
+
+//    private Object invokeSuper(Object obj, Object[] args, MethodProxy proxy) throws Throwable {
+//        return proxy.invokeSuper(obj, args);
+//    }
+
     @Override
     public Object removeCache(RemoveCache annotation, Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
-        CacheKey key = annotation.key();
-        String cacheKey = CacheUtils.parseCacheKey(key, args);
         Object returnVal = proxy.invokeSuper(obj, args);
-        int expire = CacheUtils.getExpire(annotation.expireTime(), annotation.expire());
-        if (annotation.markAsNull()) {
-            writeToCache(cacheKey, new NullCachedObject(), expire, false, annotation.type());
-        } else {
-            removeFromCache(cacheKey, annotation.type());
+        CacheKey[] keys = annotation.key();
+        for (CacheKey key : keys) {
+            String cacheKey = CacheUtils.parseCacheKey(key, args);
+            int expire = CacheUtils.getExpire(annotation.expireTime(), annotation.expire());
+            if (annotation.markAsNull()) {
+                writeToCache(cacheKey, new NullCachedObject(), expire, false, annotation.type());
+            } else {
+                removeFromCache(cacheKey, annotation.type());
+            }
         }
         return returnVal;
     }
