@@ -143,7 +143,7 @@ public class RedisClient {
         return -1;
     }
 
-    public <T> boolean exists(final String key) {
+    public boolean exists(final String key) {
         final byte[] keyByte = toByte(key, true);
         return execTask(key, new BinaryJedisRunnable<Boolean>() {
             @Override
@@ -255,7 +255,7 @@ public class RedisClient {
     }
     
     
-    public <T> long hdel(String key,Integer hash) {
+    public long hdel(String key,int hash) {
         final byte[] keyByte = toByte(key, true);
         final byte[] hashByte = toByte(hash, false);
         return execTask(key, new BinaryJedisRunnable<Long>() {
@@ -336,7 +336,7 @@ public class RedisClient {
     
     
     //查看set长度
-    public <T> long scard(String key) {
+    public long scard(String key) {
         final byte[] keyByte = toByte(key, true);
         return execTask(key, new BinaryJedisRunnable<Long>() {
             @Override 
@@ -347,7 +347,7 @@ public class RedisClient {
     }
     
     
-    public <T> long zcard(String key) {
+    public long zcard(String key) {
         final byte[] keyByte = toByte(key, true);
         return execTask(key, new BinaryJedisRunnable<Long>() {
             @Override 
@@ -358,7 +358,7 @@ public class RedisClient {
     }
     
     
-    public <T> long hlen(String key) {
+    public long hlen(String key) {
         final byte[] keyByte = toByte(key, true);
         return execTask(key, new BinaryJedisRunnable<Long>() {
             @Override 
