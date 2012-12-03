@@ -7,8 +7,8 @@ import com.skymobi.sns.cache.route.KeyRouter;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.SerializationUtils;
-import redis.clients.jedis.*;
 import redis.clients.jedis.BinaryClient.LIST_POSITION;
+import redis.clients.jedis.*;
 import redis.clients.util.Pool;
 import redis.clients.util.SafeEncoder;
 
@@ -23,7 +23,6 @@ public class RedisClient {
     private Map<String, JedisPool> jedisPoolMap = new HashMap<String, JedisPool>();
 
     private KeyRouter keyRouter;
-//    private Kryo kryo = new Kryo();
 
     public RedisClient() {
     }
@@ -209,11 +208,11 @@ public class RedisClient {
     public <T> long hset(String key,Integer hash, T o) {
         final byte[] keyByte = toByte(key, true);
         final byte[] value = toByte(o, false);
-        final byte[] hashbyte = toByte(hash, false);
+        final byte[] hashByte = toByte(hash, false);
         return execTask(key, new BinaryJedisRunnable<Long>() {
             @Override 
             public Long run(BinaryJedisCommands jedis) {
-                return jedis.hset(keyByte, hashbyte, value);
+                return jedis.hset(keyByte, hashByte, value);
             }
         });
     }
@@ -221,12 +220,11 @@ public class RedisClient {
     
     public <T> T hget(String key,Integer hash, final Class<T> c) {
         final byte[] keyByte = toByte(key, true);
-        final byte[] hashbyte = toByte(hash, false);
+        final byte[] hashByte = toByte(hash, false);
         return execTask(key, new BinaryJedisRunnable<T>() {
             @Override
             public T run(BinaryJedisCommands jedis) {
-
-                byte[] value = jedis.hget(keyByte,hashbyte);
+                byte[] value = jedis.hget(keyByte,hashByte);
                 return (T) fromByte(value, c);
             }
         });
@@ -259,11 +257,11 @@ public class RedisClient {
     
     public <T> long hdel(String key,Integer hash) {
         final byte[] keyByte = toByte(key, true);
-        final byte[] hashbyte = toByte(hash, false);
+        final byte[] hashByte = toByte(hash, false);
         return execTask(key, new BinaryJedisRunnable<Long>() {
             @Override 
             public Long run(BinaryJedisCommands jedis) {
-                return jedis.hdel(keyByte, hashbyte);
+                return jedis.hdel(keyByte, hashByte);
             }
         });
     }
@@ -286,7 +284,6 @@ public class RedisClient {
         return execTask(key, new BinaryJedisRunnable<List<T>>() {
             @Override
             public List<T> run(BinaryJedisCommands jedis) {
-//                System.out.println(this.getClass().getClassLoader().getParent().toString());
                 Set<byte[]> set = jedis.smembers(keyByte);
                 List<byte[]> list =  new ArrayList<byte[]>();
                 list.addAll(set);
@@ -300,7 +297,6 @@ public class RedisClient {
         return execTask(key, new BinaryJedisRunnable<List<T>>() {
             @Override
             public List<T> run(BinaryJedisCommands jedis) {
-//                System.out.println(this.getClass().getClassLoader().getParent().toString());
                 Map<byte[],byte[]> map = jedis.hgetAll(keyByte);
                 List<byte[]> list =  new ArrayList<byte[]>();
                 list.addAll(map.values());
@@ -315,7 +311,6 @@ public class RedisClient {
         return execTask(key, new BinaryJedisRunnable<List<T>>() {
             @Override
             public List<T> run(BinaryJedisCommands jedis) {
-//                System.out.println(this.getClass().getClassLoader().getParent().toString());
                 Set<byte[]> set = jedis.zrevrange(keyByte, start, end);
                 List<byte[]> list =  new ArrayList<byte[]>();
                 list.addAll(set);
@@ -324,20 +319,20 @@ public class RedisClient {
         });
     }
     
-    /**
-     * blpop:阻塞
-     * @param  @param key
-     * @param  @param c
-     * @param  @return    设定文件
-     * @return List<T>    DOM对象
-     * @throws 
-     * @since  CodingExample　Ver 1.1
-    */
-    public <T> T blpop(String key, final Class<T> c) {
-        final byte[] keyByte = toByte(key, true);
-        List<byte []> list = jedis.get(0).blpop(0, keyByte);
-        return (T) fromByte(list.get(1), c);
-    }
+//    /**
+//     * blpop:阻塞
+//     * @param  @param key
+//     * @param  @param c
+//     * @param  @return    设定文件
+//     * @return List<T>    DOM对象
+//     * @throws
+//     * @since  CodingExample　Ver 1.1
+//    */
+//    public <T> T blpop(String key, final Class<T> c) {
+//        final byte[] keyByte = toByte(key, true);
+//        List<byte []> list = jedis.get(0).blpop(0, keyByte);
+//        return (T) fromByte(list.get(1), c);
+//    }
     
     
     //查看set长度
@@ -418,24 +413,6 @@ public class RedisClient {
         });
     }
 
-//     public <T> String rPushAndTrim(String key, T o, final int start, final int end) {
-//        final byte[] keyByte = toByte(key);
-//        final byte[] value = toByte(o);
-//        return execTask(new JedisRunnable<String>() {
-//            @Override
-//            public String run(ShardedJedis jedis) {
-//                Jedis binaryShardedJedis = jedis.getShard(keyByte);
-//                Pipeline p = binaryShardedJedis.pipelined();
-//                Response<Long> resultNum  = p.rpush(keyByte, value);
-//                int num = resultNum.get();
-//                if(num)
-//                Response<String> result = p.ltrim(keyByte, start, end);
-//                p.exec();
-//                return result.get();
-//
-//            }
-//        });
-//    }
 
     public void pipelinePushAndTrim(final Map<String, Collection<Object>> kv, final int start, final int end) {
         for (Map.Entry<String, Collection<Object>> entry : kv.entrySet()) {
@@ -488,7 +465,6 @@ public class RedisClient {
         return execTask(key, new BinaryJedisRunnable<List<T>>() {
             @Override
             public List<T> run(BinaryJedisCommands jedis) {
-//                System.out.println(this.getClass().getClassLoader().getParent().toString());
                 List<byte[]> list = jedis.lrange(keyByte, offset, offset + limit - 1);
                 return fromByte(list, c);
             }
@@ -500,7 +476,6 @@ public class RedisClient {
         return execTask(key, new BinaryJedisRunnable<Long>() {
             @Override
             public Long run(BinaryJedisCommands jedis) {
-
                 return jedis.expire(keyByte, seconds);
 
             }
@@ -545,17 +520,17 @@ public class RedisClient {
     public <T> String lset(String key, int index, T ovalue) {
         final byte[] keyByte = toByte(key, true);
         final byte[] value = toByte(ovalue, false);
-        final int indexindex = index;
+        final int indexFinal = index;
         return execTask(key, new BinaryJedisRunnable<String>() {
             @Override
             public String run(BinaryJedisCommands jedis) {
-                return jedis.lset(keyByte, indexindex, value);
+                return jedis.lset(keyByte, indexFinal, value);
             }
         });
     }
 
-    public static <T> byte[] toByte(T o, boolean iskey) {
-        if (iskey || o instanceof String) {
+    public static <T> byte[] toByte(T o, boolean isKey) {
+        if (isKey || o instanceof String) {
             return SafeEncoder.encode((String) o);
         }
         if (o == null) {
@@ -566,7 +541,6 @@ public class RedisClient {
         if (ClassUtils.isPrimitiveOrWrapper(c)) {
             if (c.equals(Long.class) || c.equals(long.class)) {
                 return SafeEncoder.encode(Long.toString((Long) o));
-//                return Longs.toByteArray((Long) o);
             }
             if (c.equals(Boolean.class) || c.equals(boolean.class)) {
                 Boolean b = (Boolean) o;
@@ -586,11 +560,9 @@ public class RedisClient {
             }
             if (c.equals(Integer.class) || c.equals(int.class)) {
                 return SafeEncoder.encode(Integer.toString((Integer) o));
-//                return Ints.toByteArray((Integer) o);
             }
             if (c.equals(Short.class) || c.equals(short.class)) {
                 return SafeEncoder.encode(Short.toString((Short) o));
-//                return Shorts.toByteArray((Short) o);
             }
         }
         return SerializationUtils.serialize(o);
@@ -614,40 +586,37 @@ public class RedisClient {
                 if (bytes == null || bytes.length == 0) {
                     return null;
                 }
-                return (Long) Long.parseLong(SafeEncoder.encode(bytes));
+                return Long.parseLong(SafeEncoder.encode(bytes));
             }
             if (c.equals(Boolean.class) || c.equals(boolean.class)) {
                 if (bytes == null || bytes.length == 0) {
                     return null;
                 }
-                if (bytes[0] == 1) {
-                    return (Boolean) true;
-                }
-                return (Boolean) false;
+                return bytes[0] == 1;
             }
             if (c.equals(Byte.class) || c.equals(byte.class)) {
                 if (bytes == null || bytes.length == 0) {
                     return null;
                 }
-                return (Byte) bytes[0];
+                return bytes[0];
             }
             if (c.equals(Character.class) || c.equals(char.class)) {
                 if (bytes == null || bytes.length == 0) {
                     return null;
                 }
-                return (Character) Chars.fromByteArray(bytes);
+                return Chars.fromByteArray(bytes);
             }
             if (c.equals(Integer.class) || c.equals(int.class)) {
                 if (bytes == null || bytes.length == 0) {
                     return null;
                 }
-                return (Integer) Integer.parseInt(SafeEncoder.encode(bytes));
+                return Integer.parseInt(SafeEncoder.encode(bytes));
             }
             if (c.equals(Short.class) || c.equals(short.class)) {
                 if (bytes == null || bytes.length == 0) {
                     return null;
                 }
-                return (Short) Short.parseShort(SafeEncoder.encode(bytes));
+                return Short.parseShort(SafeEncoder.encode(bytes));
             }
         }
         if (bytes == null || bytes.length == 0) {
@@ -661,8 +630,8 @@ public class RedisClient {
     }
 
     public List<Response> execTask(String key, PipelineRunnable task) {
-        Jedis jedis = null;
-        Pool pool = null;
+        Jedis jedis;
+        Pool pool;
         if (jedisPoolMap.isEmpty() && keyRouter == null) {
             pool = defaultPool;
             ShardedJedis shardedJedis = defaultPool.getResource();
@@ -691,8 +660,8 @@ public class RedisClient {
     }
 
     public <T> T execTask(String key, JedisRunnable<T> task) {
-        JedisCommands jedis = null;
-        Pool pool = null;
+        JedisCommands jedis;
+        Pool pool;
         if (jedisPoolMap.isEmpty() && keyRouter == null) {
             pool = defaultPool;
         } else {
@@ -711,8 +680,8 @@ public class RedisClient {
     }
 
     public <T> T execTask(String key, BinaryJedisRunnable<T> task) {
-        BinaryJedisCommands jedis = null;
-        Pool pool = null;
+        BinaryJedisCommands jedis;
+        Pool pool;
         if (jedisPoolMap.isEmpty() && keyRouter == null) {
             pool = defaultPool;
         } else {
@@ -793,18 +762,17 @@ public class RedisClient {
 
     public Long zrevrank(String key, String group) {
         final byte[] keyByte = toByte(key, true);
-        final byte[] groupkey = toByte(group, true);
+        final byte[] groupKey = toByte(group, true);
         return execTask(key, new BinaryJedisRunnable<Long>() {
             @Override
             public Long run(BinaryJedisCommands jedis) {
-                return jedis.zrevrank(keyByte, groupkey);
+                return jedis.zrevrank(keyByte, groupKey);
             }
         });
     }
 
     public static String byteToStr(byte[] b) {
-        String str = new String(b);
-        return str;
+        return new String(b);
 
     }
 
