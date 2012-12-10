@@ -14,6 +14,7 @@ import java.util.Map;
 public interface KeyRouter {
     String getHost(String key);
     String getDefaultHost();
+    String getDatabase();
     Collection<String> getHosts();
 //    Map<String, String> getRoutes();
 

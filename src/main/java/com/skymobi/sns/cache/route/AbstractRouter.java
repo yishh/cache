@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 public abstract  class AbstractRouter implements KeyRouter{
     protected String defaultHost;
     protected Collection<String> hosts = new ArrayList<String>();
+    protected String database;
 
 
     @Override
@@ -31,5 +32,13 @@ public abstract  class AbstractRouter implements KeyRouter{
 
     public void setHosts(Collection<String> hosts) {
         this.hosts = hosts;
+    }
+
+    public String getDatabase() {
+        return database;
+    }
+
+    public void setDatabase(String database) {
+        this.database = database;
     }
 }

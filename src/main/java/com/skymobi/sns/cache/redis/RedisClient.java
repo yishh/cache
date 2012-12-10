@@ -12,13 +12,14 @@ import redis.clients.jedis.*;
 import redis.clients.util.Pool;
 import redis.clients.util.SafeEncoder;
 
+import javax.annotation.PreDestroy;
 import java.util.*;
 
 
 public class RedisClient {
     private List<JedisShardInfo> shards;
-    private List<Jedis> jedis;
-    private ShardedJedisPool defaultPool;
+    //    private List<Jedis> jedis;
+    private Pool defaultPool;
 
     private Map<String, JedisPool> jedisPoolMap = new HashMap<String, JedisPool>();
 
@@ -31,25 +32,47 @@ public class RedisClient {
         this(addresses, null);
     }
 
+    public RedisClient(String host, int port, String password, int database, GenericObjectPool.Config poolConfig) {
+
+        if (poolConfig == null) {
+            poolConfig = getDefaultPoolConfig();
+        }
+        defaultPool = new JedisPool(poolConfig, host, port, Protocol.DEFAULT_TIMEOUT, password, database);
+    }
+
+
+    @PreDestroy
+    public void shutdown() {
+        if (defaultPool != null)
+            defaultPool.destroy();
+
+        if (!jedisPoolMap.isEmpty()) {
+            for (JedisPool pool : jedisPoolMap.values()) {
+                pool.destroy();
+            }
+        }
+    }
+
     public RedisClient(String addresses, GenericObjectPool.Config poolConfig) {
         shards = new ArrayList<JedisShardInfo>();
         String[] addressArray = addresses.split(" ");
-        jedis = new ArrayList<Jedis>();
+//        jedis = new ArrayList<Jedis>();
         for (String address : addressArray) {
             String[] parts = address.split(":");
             JedisShardInfo si = new JedisShardInfo(parts[0], Integer.parseInt(parts[1]));
             shards.add(si);
-            jedis.add(new Jedis(parts[0], Integer.parseInt(parts[1])));
+//            jedis.add(new Jedis(parts[0], Integer.parseInt(parts[1])));
         }
         if (poolConfig == null) {
             poolConfig = getDefaultPoolConfig();
         }
+
         defaultPool = new ShardedJedisPool(poolConfig, shards);
 
     }
 
     public RedisClient(KeyRouter keyRouter) {
-       this(keyRouter, null);
+        this(keyRouter, null);
     }
 
     public RedisClient(KeyRouter keyRouter, GenericObjectPool.Config poolConfig) {
@@ -58,31 +81,36 @@ public class RedisClient {
             poolConfig = getDefaultPoolConfig();
         }
         for (String host : this.keyRouter.getHosts()) {
-            JedisPool pool = getJedisPool(poolConfig, host);
+            JedisPool pool = getJedisPool(poolConfig, host, keyRouter.getDatabase());
             jedisPoolMap.put(host, pool);
         }
         if (!jedisPoolMap.containsKey(keyRouter.getDefaultHost())) {
-            jedisPoolMap.put(keyRouter.getDefaultHost(), getJedisPool(poolConfig, keyRouter.getDefaultHost()));
+            jedisPoolMap.put(keyRouter.getDefaultHost(), getJedisPool(poolConfig, keyRouter.getDefaultHost(), keyRouter.getDatabase()));
         }
     }
 
 
-    private JedisPool getJedisPool(GenericObjectPool.Config poolConfig, String host) {
+    private JedisPool getJedisPool(GenericObjectPool.Config poolConfig, String host, String database) {
         JedisPool pool;
+        int dbIndex = 0;
+        if (database == null) {
+            dbIndex = Integer.parseInt(database);
+        }
         int passwordSplit = host.indexOf("/");
         if (passwordSplit == -1) {
             String[] parts = host.split(":");
-            pool = new JedisPool(poolConfig, parts[0], Integer.parseInt(parts[1]));
+            pool = new JedisPool(poolConfig, parts[0], Integer.parseInt(parts[1]), Protocol.DEFAULT_TIMEOUT, null, dbIndex);
         } else {
             String[] parts = host.substring(0, passwordSplit).split(":");
             String password = host.substring(passwordSplit + 1);
-            pool = new JedisPool(poolConfig, parts[0], Integer.parseInt(parts[1]), Protocol.DEFAULT_TIMEOUT, password);
+            pool = new JedisPool(poolConfig, parts[0], Integer.parseInt(parts[1]), Protocol.DEFAULT_TIMEOUT, password, dbIndex);
         }
         return pool;
     }
 
     private GenericObjectPool.Config getDefaultPoolConfig() {
         GenericObjectPool.Config poolConfig = new GenericObjectPool.Config();
+
         poolConfig.testWhileIdle = true;
         poolConfig.minEvictableIdleTimeMillis = 60000;
         poolConfig.timeBetweenEvictionRunsMillis = 30000;
@@ -90,9 +118,10 @@ public class RedisClient {
         return poolConfig;
     }
 
-    public ShardedJedisPool getPool() {
+    public Pool getPool() {
         return defaultPool;
     }
+
     //在队列尾部增加
     public <T> long rpush(String key, T o) {
         final byte[] keyByte = toByte(key, true);
@@ -120,14 +149,27 @@ public class RedisClient {
 
     public long remove(final String key) {
         if (jedisPoolMap.isEmpty() && keyRouter == null) {
-            ShardedJedis shardedJedis = defaultPool.getResource();
-            try {
-                return shardedJedis.del(key);
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                defaultPool.returnResource(shardedJedis);
+            if (defaultPool instanceof ShardedJedisPool) {
+                ShardedJedis shardedJedis = ((ShardedJedisPool) defaultPool).getResource();
+                try {
+                    return shardedJedis.del(key);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    defaultPool.returnResource(shardedJedis);
+                }
+            } else {
+
+                Jedis jedis = ((JedisPool) defaultPool).getResource();
+                try {
+                    return jedis.del(key);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    defaultPool.returnResource(jedis);
+                }
             }
+
         } else {
             String host = keyRouter.getHost(key);
             JedisPool pool = jedisPoolMap.get(host);
@@ -166,6 +208,7 @@ public class RedisClient {
             }
         });
     }
+
     //  add by whz  出队列  添加  丛尾部溢出元素
     public <T> T rpop(String key, final Class<T> c) {
         final byte[] keyByte = toByte(key, true);
@@ -178,7 +221,7 @@ public class RedisClient {
             }
         });
     }
-    
+
     //头部溢出元素
     public <T> T lpop(String key, final Class<T> c) {
         final byte[] keyByte = toByte(key, true);
@@ -191,93 +234,93 @@ public class RedisClient {
             }
         });
     }
-    
+
 
     //添加元素set中
     public <T> long sadd(String key, T o) {
         final byte[] keyByte = toByte(key, true);
         final byte[] value = toByte(o, false);
         return execTask(key, new BinaryJedisRunnable<Long>() {
-            @Override 
+            @Override
             public Long run(BinaryJedisCommands jedis) {
                 return jedis.sadd(keyByte, value);
             }
         });
     }
-    
-    public <T> long hset(String key,Integer hash, T o) {
+
+    public <T> long hset(String key, Integer hash, T o) {
         final byte[] keyByte = toByte(key, true);
         final byte[] value = toByte(o, false);
         final byte[] hashByte = toByte(hash, false);
         return execTask(key, new BinaryJedisRunnable<Long>() {
-            @Override 
+            @Override
             public Long run(BinaryJedisCommands jedis) {
                 return jedis.hset(keyByte, hashByte, value);
             }
         });
     }
-    
-    
-    public <T> T hget(String key,Integer hash, final Class<T> c) {
+
+
+    public <T> T hget(String key, Integer hash, final Class<T> c) {
         final byte[] keyByte = toByte(key, true);
         final byte[] hashByte = toByte(hash, false);
         return execTask(key, new BinaryJedisRunnable<T>() {
             @Override
             public T run(BinaryJedisCommands jedis) {
-                byte[] value = jedis.hget(keyByte,hashByte);
+                byte[] value = jedis.hget(keyByte, hashByte);
                 return (T) fromByte(value, c);
             }
         });
     }
-    
-    public <T> long zadd(String key, T o,final double order) {
+
+    public <T> long zadd(String key, T o, final double order) {
         final byte[] keyByte = toByte(key, true);
         final byte[] value = toByte(o, false);
         return execTask(key, new BinaryJedisRunnable<Long>() {
-            @Override 
+            @Override
             public Long run(BinaryJedisCommands jedis) {
-                return jedis.zadd(keyByte,order,value);
+                return jedis.zadd(keyByte, order, value);
             }
         });
     }
-    
-    
+
+
     //删除指定key  元素
     public <T> long srem(String key, T o) {
         final byte[] keyByte = toByte(key, true);
         final byte[] value = toByte(o, false);
         return execTask(key, new BinaryJedisRunnable<Long>() {
-            @Override 
+            @Override
             public Long run(BinaryJedisCommands jedis) {
                 return jedis.srem(keyByte, value);
             }
         });
     }
-    
-    
-    public long hdel(String key,int hash) {
+
+
+    public long hdel(String key, int hash) {
         final byte[] keyByte = toByte(key, true);
         final byte[] hashByte = toByte(hash, false);
         return execTask(key, new BinaryJedisRunnable<Long>() {
-            @Override 
+            @Override
             public Long run(BinaryJedisCommands jedis) {
                 return jedis.hdel(keyByte, hashByte);
             }
         });
     }
-    
+
     //删除指定key  元素
     public <T> long zrem(String key, T o) {
         final byte[] keyByte = toByte(key, true);
         final byte[] value = toByte(o, false);
         return execTask(key, new BinaryJedisRunnable<Long>() {
-            @Override 
+            @Override
             public Long run(BinaryJedisCommands jedis) {
                 return jedis.zrem(keyByte, value);
             }
         });
     }
-     
+
     //返回所有元素
     public <T> List<T> smembers(String key, final Class<T> c) {
         final byte[] keyByte = toByte(key, true);
@@ -285,40 +328,40 @@ public class RedisClient {
             @Override
             public List<T> run(BinaryJedisCommands jedis) {
                 Set<byte[]> set = jedis.smembers(keyByte);
-                List<byte[]> list =  new ArrayList<byte[]>();
+                List<byte[]> list = new ArrayList<byte[]>();
                 list.addAll(set);
                 return fromByte(list, c);
             }
         });
     }
-    
+
     public <T> List<T> hgetAll(String key, final Class<T> c) {
         final byte[] keyByte = toByte(key, true);
         return execTask(key, new BinaryJedisRunnable<List<T>>() {
             @Override
             public List<T> run(BinaryJedisCommands jedis) {
-                Map<byte[],byte[]> map = jedis.hgetAll(keyByte);
-                List<byte[]> list =  new ArrayList<byte[]>();
+                Map<byte[], byte[]> map = jedis.hgetAll(keyByte);
+                List<byte[]> list = new ArrayList<byte[]>();
                 list.addAll(map.values());
                 return fromByte(list, c);
             }
         });
     }
-    
-    
-    public <T> List<T> zrevrange(String key, final Class<T> c,final int start,final int end) {
+
+
+    public <T> List<T> zrevrange(String key, final Class<T> c, final int start, final int end) {
         final byte[] keyByte = toByte(key, true);
         return execTask(key, new BinaryJedisRunnable<List<T>>() {
             @Override
             public List<T> run(BinaryJedisCommands jedis) {
                 Set<byte[]> set = jedis.zrevrange(keyByte, start, end);
-                List<byte[]> list =  new ArrayList<byte[]>();
+                List<byte[]> list = new ArrayList<byte[]>();
                 list.addAll(set);
                 return fromByte(list, c);
             }
         });
     }
-    
+
 //    /**
 //     * blpop:阻塞
 //     * @param  @param key
@@ -333,43 +376,42 @@ public class RedisClient {
 //        List<byte []> list = jedis.get(0).blpop(0, keyByte);
 //        return (T) fromByte(list.get(1), c);
 //    }
-    
-    
+
+
     //查看set长度
     public long scard(String key) {
         final byte[] keyByte = toByte(key, true);
         return execTask(key, new BinaryJedisRunnable<Long>() {
-            @Override 
+            @Override
             public Long run(BinaryJedisCommands jedis) {
                 return jedis.scard(keyByte);
             }
         });
     }
-    
-    
+
+
     public long zcard(String key) {
         final byte[] keyByte = toByte(key, true);
         return execTask(key, new BinaryJedisRunnable<Long>() {
-            @Override 
+            @Override
             public Long run(BinaryJedisCommands jedis) {
                 return jedis.zcard(keyByte);
             }
         });
     }
-    
-    
+
+
     public long hlen(String key) {
         final byte[] keyByte = toByte(key, true);
         return execTask(key, new BinaryJedisRunnable<Long>() {
-            @Override 
+            @Override
             public Long run(BinaryJedisCommands jedis) {
                 return jedis.hlen(keyByte);
             }
         });
     }
-    
-    
-    
+
+
     //end  add by whz
 
     public String ltrim(String key, final int start, final int end) {
@@ -634,14 +676,20 @@ public class RedisClient {
         Pool pool;
         if (jedisPoolMap.isEmpty() && keyRouter == null) {
             pool = defaultPool;
-            ShardedJedis shardedJedis = defaultPool.getResource();
-            jedis = shardedJedis.getShard(key);
+            Object resource;
+            if (pool instanceof ShardedJedisPool) {
+                resource = ((ShardedJedisPool) defaultPool).getResource();
+                jedis = ((ShardedJedis) resource).getShard(key);
+            } else {
+                resource = ((JedisPool) pool).getResource();
+                jedis = (Jedis) resource;
+            }
             try {
                 return task.run(jedis);
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                pool.returnResource(shardedJedis);
+                pool.returnResource(resource);
             }
         } else {
             String host = keyRouter.getHost(key);
