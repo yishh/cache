@@ -98,12 +98,19 @@
             <groupId>spy</groupId>
             <artifactId>spymemcached</artifactId>
             <version>2.7.1</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>commons-beanutils</groupId>
             <artifactId>commons-beanutils</artifactId>
             <version>1.8.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.netty</groupId>
+            <artifactId>netty</artifactId>
+            <version>3.2.7.Final</version><!--$NO-MVN-MAN-VER$-->
         </dependency>
     </dependencies>
     <repositories>

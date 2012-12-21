@@ -1,7 +1,7 @@
 package com.skymobi.sns.cache;
 
+import com.google.common.primitives.Chars;
 import com.skymobi.sns.cache.annotation.CacheKey;
-import com.skymobi.sns.cache.annotation.CacheKeyEl;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
@@ -9,9 +9,10 @@ import org.springframework.expression.ParserContext;
 import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.util.ClassUtils;
+import org.springframework.util.SerializationUtils;
+import redis.clients.util.SafeEncoder;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,6 +24,11 @@ import java.util.regex.Pattern;
  * To change this template use File | Settings | File Templates.
  */
 public class CacheUtils {
+
+
+
+
+
     public static int getExpire(String timeExpress, int defaultExpire) {
         if (StringUtils.isEmpty(timeExpress)) {
             return defaultExpire;
@@ -70,8 +76,8 @@ public class CacheUtils {
         }
         return toAdd;
     }
-    
-    public static String parseSimpleKey(String template,  Object[] parameters) {
+
+    public static String parseSimpleKey(String template, Object[] parameters) {
         ExpressionParser parser = new SpelExpressionParser();
         ParserContext templateContext = new TemplateParserContext();
         String expressTemplate = template.replaceAll("\\$\\{([^\\$]+){1}\\}", "#{#$1}");
@@ -79,9 +85,9 @@ public class CacheUtils {
         Expression expression = parser.parseExpression(expressTemplate, templateContext);
 
         StandardEvaluationContext context = new StandardEvaluationContext();
-        int i =0;
+        int i = 0;
         for (Object obj : parameters) {
-            context.setVariable(String.format("p%s",i), obj);
+            context.setVariable(String.format("p%s", i), obj);
             i++;
         }
         return expression.getValue(context, String.class);
@@ -94,8 +100,8 @@ public class CacheUtils {
         }
 
         String[] els = cacheKey.els();
-        if(els.length == 0){
-            return  parseSimpleKey(template, parameters);
+        if (els.length == 0) {
+            return parseSimpleKey(template, parameters);
         }
         ExpressionParser parser = new SpelExpressionParser();
         StandardEvaluationContext teslaContext = new StandardEvaluationContext();
@@ -107,11 +113,11 @@ public class CacheUtils {
             parsedArgs[i] = invention;
             i++;
         }
-      
+
         return String.format(template, parsedArgs);
     }
 
-    
+
 //    public static void main(String[] args){
 //        ExpressionParser parser = new SpelExpressionParser();
 //        ParserContext templateContext = new TemplateParserContext();

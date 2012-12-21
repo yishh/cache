@@ -2,7 +2,6 @@ package com.skymobi.sns.cache.route;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,7 +13,7 @@ import java.util.regex.Pattern;
  * Time: 下午3:51
  * To change this template use File | Settings | File Templates.
  */
-public class DefaultKeyRouter implements KeyRouter {
+public class DefaultKeyRouter extends AbstractRouter implements KeyRouter {
 
     private String defaultHost;
     private Map<String, String> routes = new HashMap<String, String>();
