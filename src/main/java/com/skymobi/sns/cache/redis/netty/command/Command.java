@@ -13,6 +13,7 @@ import java.util.concurrent.Future;
  */
 public interface Command<T> {
     List<byte[]> getArgs();
+    String getName();
     void setTranscoder(Transcoder transcoder);
     Transcoder getTranscoder();
 

@@ -28,7 +28,7 @@ public class SerializingTranscoder implements Transcoder<Object>{
     static final int SPECIAL_FLOAT = (6 << 8);
     static final int SPECIAL_DOUBLE = (7 << 8);
     static final int SPECIAL_BYTEARRAY = (8 << 8);
-    private final TranscoderUtils tu = new TranscoderUtils(true);
+    private final TranscoderUtils tu = new TranscoderUtils(false);
     @Override
     public byte[] encode(Object o) {
         byte[] b = null;

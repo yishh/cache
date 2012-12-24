@@ -32,16 +32,18 @@ public class StringArgsCommand<T> extends BaseCommand<T> {
     public StringArgsCommand(Transcoder transcoder, String command, String key, Object... args) {
 
         this.command = command;
-        setTranscoder(transcoder);
+        if(transcoder != null)
+            setTranscoder(transcoder);
+        else
+            setTranscoder(SERIALIZING_TRANSCODER);
         byte[][] byteArgs = new byte[args.length + 1][];
         byteArgs[0] = tu.encodeString(key);
         for (int i = 0; i < args.length; i++) {
             if (args[i] instanceof byte[]) {
                 byteArgs[i+1] = (byte[]) args[i];
-            } else if(args[i] instanceof String){
-                byteArgs[i+1] = tu.encodeString((String) args[i]);
             }else {
-                byteArgs[i+1] = SERIALIZING_TRANSCODER.encode(args[i]);
+                //noinspection unchecked
+                byteArgs[i+1] = getTranscoder().encode(args[i]);
             }
         }
         init(byteArgs);

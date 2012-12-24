@@ -1,7 +1,6 @@
 package com.skymobi.sns.cache.redis.netty.reply;
 
 import com.skymobi.sns.cache.redis.transcoders.Transcoder;
-import com.skymobi.sns.cache.transcoders.CachedData;
 
 /**
  * User: thor
@@ -25,6 +24,7 @@ public class BulkReply implements Reply<Object> {
 
     @Override
     public Object decode(Transcoder transcoder) {
+        if (result == null || result.length == 0) return null;
         return transcoder.decode(result);
     }
 

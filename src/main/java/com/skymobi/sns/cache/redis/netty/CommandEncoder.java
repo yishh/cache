@@ -3,11 +3,6 @@ package com.skymobi.sns.cache.redis.netty;
 import com.skymobi.sns.cache.redis.netty.command.Command;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.handler.codec.oneone.OneToOneEncoder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -16,17 +11,15 @@ import java.util.List;
  * Date: 12-12-20
  * Time: 上午10:16
  */
-public class CommandEncoder extends OneToOneEncoder {
-    Logger logger = LoggerFactory.getLogger(CommandEncoder.class);
+public class CommandEncoder  {
+//    Logger logger = LoggerFactory.getLogger(CommandEncoder.class);
     final static byte[] CR_LF = "\r\n".getBytes();
     public static final byte DOLLAR_BYTE = '$';
     public static final byte ASTERISK_BYTE = '*';
 
-    @Override
-    protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
-        if(!(msg instanceof Command)) return null;
-        logger.debug("encode command start");
-        List<byte[]> args = ((Command) msg).getArgs();
+
+    public static ChannelBuffer encode(Command command){
+        List<byte[]> args = command.getArgs();
         ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
         buffer.writeByte(ASTERISK_BYTE);
         writeInt(buffer,  args.size());
@@ -38,9 +31,27 @@ public class CommandEncoder extends OneToOneEncoder {
             buffer.writeBytes(arg);
             buffer.writeBytes(CR_LF);
         }
-        logger.debug("encode command end");
         return buffer;
     }
+//    @Override
+//    protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
+//        if(!(msg instanceof Command)) return null;
+//        logger.debug("encode command start");
+//        List<byte[]> args = ((Command) msg).getArgs();
+//        ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
+//        buffer.writeByte(ASTERISK_BYTE);
+//        writeInt(buffer,  args.size());
+//        buffer.writeBytes(CR_LF);
+//        for(byte[] arg: args){
+//            buffer.writeByte(DOLLAR_BYTE);
+//            writeInt(buffer,  arg.length);
+//            buffer.writeBytes(CR_LF);
+//            buffer.writeBytes(arg);
+//            buffer.writeBytes(CR_LF);
+//        }
+//        logger.debug("encode command end");
+//        return buffer;
+//    }
 
     protected static void writeInt(ChannelBuffer buf, int value) {
         if (value < 10) {

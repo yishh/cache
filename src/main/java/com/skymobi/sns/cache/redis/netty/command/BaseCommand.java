@@ -24,10 +24,14 @@ public abstract class BaseCommand<T> implements Command {
     final static Transcoder<Object> SERIALIZING_TRANSCODER = new SerializingTranscoder();
     Transcoder transcoder;
 
+
     public BaseCommand() {
     }
 
-
+    @Override
+    public String getName(){
+        return command;
+    }
     protected void init(byte[]... args) {
         this.args = new ArrayList<byte[]>();
         this.args.add(command.getBytes(Charsets.US_ASCII));

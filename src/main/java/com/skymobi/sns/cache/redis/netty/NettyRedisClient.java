@@ -5,6 +5,8 @@ import com.skymobi.sns.cache.redis.netty.command.Command;
 import com.skymobi.sns.cache.redis.netty.command.Commands;
 import com.skymobi.sns.cache.redis.netty.reply.Reply;
 import com.skymobi.sns.cache.redis.transcoders.IntegerTranscoder;
+import com.skymobi.sns.cache.redis.transcoders.LongTranscoder;
+import com.skymobi.sns.cache.redis.transcoders.SerializingTranscoder;
 import com.skymobi.sns.cache.redis.transcoders.Transcoder;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.*;
@@ -14,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 
 /**
@@ -75,7 +78,7 @@ public class NettyRedisClient extends SimpleChannelHandler implements AsyncRedis
                 Executors.newCachedThreadPool());
         ClientBootstrap bootstrap =
                 new ClientBootstrap(nioClientSocketChannelFactory);
-        ChannelPipeline pipeline = Channels.pipeline(new ReplyDecoder(), new CommandEncoder(), this);
+        ChannelPipeline pipeline = Channels.pipeline(new ReplyDecoder(), this);
         bootstrap.setPipeline(pipeline);
         ChannelFuture connectFuture = bootstrap.connect(new InetSocketAddress(host, port));
         channel = connectFuture.awaitUninterruptibly().getChannel();
@@ -127,13 +130,14 @@ public class NettyRedisClient extends SimpleChannelHandler implements AsyncRedis
     }
 
     @Override
-    public Future<Long> delete(String key) {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    public Future<Integer> delete(String key) {
+        return delete(new String[]{key});
     }
 
     @Override
-    public Future<Long> delete(String... key) {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    public Future<Integer> delete(String... key) {
+        //noinspection unchecked
+        return sendCommand(Commands.DEL, null, key);
     }
 
     @Override
@@ -142,8 +146,9 @@ public class NettyRedisClient extends SimpleChannelHandler implements AsyncRedis
     }
 
     @Override
-    public Future<Boolean> exists(String key) {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    public Future<Integer> exists(String key) {
+        //noinspection unchecked
+        return sendCommand(Commands.EXISTS, null, key);
     }
 
     @Override
@@ -179,34 +184,179 @@ public class NettyRedisClient extends SimpleChannelHandler implements AsyncRedis
     @Override
     public Future<String> set(String key, int o) {
         //noinspection unchecked
-        return sendCommand(Commands.SET, null, key, String.valueOf(o));
+        return sendCommand(Commands.SET, Transcoder.INTEGER_TRANSCODER, key, o);
     }
 
     @Override
     public Future<String> set(String key, long o) {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        //noinspection unchecked
+        return sendCommand(Commands.SET, Transcoder.LONG_TRANSCODER, key, o);
     }
 
     @Override
     public Future<String> set(String key, double o) {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        //noinspection unchecked
+        return sendCommand(Commands.SET, Transcoder.DOUBLE_TRANSCODER, key, o);
     }
 
     @Override
     public Future<String> set(String key, Object o) {
         //noinspection unchecked
-        return sendCommand(Commands.SET, null, key, o);
+        return sendCommand(Commands.SET, Transcoder.SERIALIZING_TRANSCODER, key, o);
+    }
+
+    @Override
+    public Future<Integer> setNx(String key, int o) {
+        //noinspection unchecked
+        return sendCommand(Commands.SETNX, Transcoder.INTEGER_TRANSCODER, key, o);
+    }
+
+    @Override
+    public Future<Integer> setNx(String key, long o) {
+        //noinspection unchecked
+        return sendCommand(Commands.SETNX, Transcoder.LONG_TRANSCODER, key, o);
+    }
+
+    @Override
+    public Future<Integer> setNx(String key, double o) {
+        //noinspection unchecked
+        return sendCommand(Commands.SETNX, Transcoder.DOUBLE_TRANSCODER, key, o);
+    }
+
+    @Override
+    public Future<Integer> setNx(String key, Object o) {
+        //noinspection unchecked
+        return sendCommand(Commands.SETNX, Transcoder.SERIALIZING_TRANSCODER, key, o);
+    }
+
+    @Override
+    public Future<Integer> msetIntNx(Map<String, Integer> value) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<Integer> msetLongNx(Map<String, Long> value) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<Integer> msetDoubleNx(Map<String, Double> value) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<Integer> msetObjectNx(Map<String, Object> value) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<String> setEx(String key, int o, int seconds) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<String> setEx(String key, long o, int seconds) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<String> setEx(String key, double o, int seconds) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<String> setEx(String key, Object o, int seconds) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<String> msetInt(Map<String, Integer> value) {
+        //noinspection unchecked
+        return sendCommand(Commands.MSET, Transcoder.INTEGER_TRANSCODER, value);
+    }
+
+    @Override
+    public Future<String> msetLong(Map<String, Long> value) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<String> msetDouble(Map<String, Double> value) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<String> msetObject(Map<String, Object> value) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     public Future<Object> get(String key) {
-        return null;
+        //noinspection unchecked
+        return sendCommand(Commands.GET, Transcoder.SERIALIZING_TRANSCODER, key);
     }
 
     @Override
     public Future<Integer> getInt(String key) {
         //noinspection unchecked
-        return sendCommand(Commands.GET, new IntegerTranscoder(), key);
+        return sendCommand(Commands.GET, Transcoder.INTEGER_TRANSCODER, key);
+    }
+
+    @Override
+    public Future<Long> getLong(String key) {
+        //noinspection unchecked
+        return sendCommand(Commands.GET, Transcoder.LONG_TRANSCODER, key);
+    }
+
+    @Override
+    public Future<Double> getDouble(String key) {
+        //noinspection unchecked
+        return sendCommand(Commands.GET, Transcoder.DOUBLE_TRANSCODER, key);
+    }
+
+    @Override
+    public Future<List<Object>> mget(String[] key) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<List<Integer>> mgetInt(String[] key) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<List<Long>> mgetLong(String[] key) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<List<Double>> mgetDouble(String[] key) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<Long> decr(String key) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<Long> decrBy(String key, int decrement) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<Long> incr(String key) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<Long> incrBy(String key, int decrement) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public Future<Long> getAndSet(String key, int v) {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
     final BlockingQueue<Command> commandQueue = new LinkedBlockingQueue<Command>();
@@ -214,9 +364,13 @@ public class NettyRedisClient extends SimpleChannelHandler implements AsyncRedis
     @Override
     public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         Command message = (Command) e.getMessage();
+        logger.debug("send command [{}]", message.getName());
+        Channels.write(ctx, e.getFuture(), CommandEncoder.encode(message));
         commandQueue.put(message);
-        ctx.sendDownstream(e);
+//        ctx.sendDownstream(e);
     }
+
+
 
 
     @SuppressWarnings("unchecked")
@@ -227,6 +381,7 @@ public class NettyRedisClient extends SimpleChannelHandler implements AsyncRedis
         Reply reply = (Reply) e.getMessage();
         Command command = commandQueue.take();
         command.setResult(reply);
+        logger.debug("receive command [{}] 's reply", command.getName());
         ctx.sendUpstream(e);
 
     }

@@ -1,8 +1,6 @@
 package com.skymobi.sns.cache.redis.netty;
 
 import com.skymobi.sns.cache.redis.netty.reply.*;
-import com.skymobi.sns.cache.transcoders.SerializingTranscoder;
-import com.skymobi.sns.cache.transcoders.Transcoder;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
@@ -27,7 +25,7 @@ public class ReplyDecoder extends ReplayingDecoder {
     private static final byte CR = '\r';
     private static final byte LF = '\n';
     private static final int MAX_LINE_LENGTH = 10 * 1024 * 1024;
-    private static final Transcoder<Object> transcoder = new SerializingTranscoder();
+
     private  MultiBulkReply multiBulkReply;
 
 
