@@ -1,7 +1,6 @@
 package cache;
 
-import com.skymobi.sns.cache.redis.RedisClient;
-import com.skymobi.sns.cache.redis.RedisCounter;
+
 import junit.framework.Assert;
 import junit.framework.TestCase;
 

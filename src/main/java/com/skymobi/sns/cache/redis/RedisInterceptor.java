@@ -2,18 +2,18 @@ package com.skymobi.sns.cache.redis;
 
 import com.skymobi.sns.cache.AbstractInterceptor;
 import com.skymobi.sns.cache.NullCachedObject;
+import mobi.app.redis.RedisClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 /**
- * Created by IntelliJ IDEA.
  * User: liweijing
  * Date: 11-8-3
  * Time: 下午3:22
- * To change this template use File | Settings | File Templates.
  */
+
 public class RedisInterceptor extends AbstractInterceptor {
     Logger logger = LoggerFactory.getLogger(RedisInterceptor.class);
     protected RedisClient masterClient;
@@ -39,7 +39,7 @@ public class RedisInterceptor extends AbstractInterceptor {
 
     @Override
     public Object loadFromCache(String key, Class<?> c, String cacheType) {
-        return slaveClient.get(key, c);
+        return slaveClient.get(key);
     }
 
     private void write(String key, Object value, int expire) {
@@ -89,12 +89,12 @@ public class RedisInterceptor extends AbstractInterceptor {
 
     @Override
     public List<?> loadListFromCache(String key, int offset, int limit, Class<?> c, String cacheType) {
-        return slaveClient.lrange(key, offset, limit, c);
+        return slaveClient.lrange(key, offset, offset+limit);
     }
 
     @Override
     public void removeFromCache(String key, String cacheType) {
-        masterClient.remove(key);
+        masterClient.delete(key);
     }
 
 
