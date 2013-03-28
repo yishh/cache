@@ -1,6 +1,5 @@
 package com.skymobi.sns.cache;
 
-import com.google.common.primitives.Chars;
 import com.skymobi.sns.cache.annotation.CacheKey;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.expression.Expression;
@@ -9,19 +8,16 @@ import org.springframework.expression.ParserContext;
 import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
-import org.springframework.util.ClassUtils;
-import org.springframework.util.SerializationUtils;
-import redis.clients.util.SafeEncoder;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+//import redis.clients.util.SafeEncoder;
+
 /**
- * Created by IntelliJ IDEA.
  * User: liweijing
  * Date: 11-7-29
  * Time: 下午3:19
- * To change this template use File | Settings | File Templates.
  */
 public class CacheUtils {
 
