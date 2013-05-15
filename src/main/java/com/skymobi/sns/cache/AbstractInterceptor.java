@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.Stack;
 
 /**
- * Created by IntelliJ IDEA.
+ *
  * User: liweijing
  * Date: 11-11-25
  * Time: 上午9:21
- * To change this template use File | Settings | File Templates.
+ *
  */
 public abstract class AbstractInterceptor implements CacheInterceptor {
 //    protected  com.google.common.cache.Cache<String, Object> localCache = CacheBuilder.newBuilder()
@@ -180,8 +180,7 @@ public abstract class AbstractInterceptor implements CacheInterceptor {
 //    }
 
     @Override
-    public Object removeCache(RemoveCache annotation, Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
-        Object returnVal = proxy.invokeSuper(obj, args);
+    public void removeCache(RemoveCache annotation, Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
         CacheKey[] keys = annotation.key();
         for (CacheKey key : keys) {
             String cacheKey = CacheUtils.parseCacheKey(key, args);
@@ -192,7 +191,6 @@ public abstract class AbstractInterceptor implements CacheInterceptor {
                 removeFromCache(cacheKey, annotation.type());
             }
         }
-        return returnVal;
     }
 
     public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
@@ -200,7 +198,6 @@ public abstract class AbstractInterceptor implements CacheInterceptor {
         pushed = !(firstInvoke.get().isEmpty() || firstInvoke.get().peek());
         firstInvoke.get().push(pushed);
         try {
-
             Annotation[] annotations = method.getAnnotations();
             for (Annotation annotation : annotations) {
                 if (annotation instanceof SimpleCache) {
@@ -216,7 +213,7 @@ public abstract class AbstractInterceptor implements CacheInterceptor {
                 } else if (annotation instanceof WriteCache) {
                     return writeCache((WriteCache) annotation, obj, method, args, proxy);
                 } else if (annotation instanceof RemoveCache) {
-                    return removeCache((RemoveCache) annotation, obj, method, args, proxy);
+                     removeCache((RemoveCache) annotation, obj, method, args, proxy);
                 }
             }
             return proxy.invokeSuper(obj, args);

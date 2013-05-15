@@ -24,5 +24,5 @@ public interface CacheInterceptor extends MethodInterceptor {
 
     Object writeCache(WriteCache annotation, Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable;
 
-    Object removeCache(RemoveCache annotation, Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable;
+    void removeCache(RemoveCache annotation, Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable;
 }
