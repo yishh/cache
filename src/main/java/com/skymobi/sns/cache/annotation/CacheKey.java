@@ -14,6 +14,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CacheKey {
     String template();
+    @Deprecated
     String[] els() default {};
     boolean simple() default false;
 }
