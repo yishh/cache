@@ -160,6 +160,7 @@ Cache框架通过Spring配置的拦截器来实现缓存的快捷操作，目前
 		boolean markAsNull() default false;    //是否将改key对应的缓存数据标记为null数据
 		int expire() default 0;          //同@CacheKey
 		String expireTime() default "";      //同@CacheKey
+		boolean invokeBefore() default false; //默认是在方法调用成功后才会移除缓存,这里设置为true，则在调用方法前先清除缓存
 		
 6. ListedCache
 

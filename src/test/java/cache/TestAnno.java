@@ -13,7 +13,7 @@ import java.lang.reflect.Method;
  * Time: 下午4:31
  */
 public class TestAnno {
-    @RemoveCache(key = @CacheKey(template = "ddd", simple = true))
+    @RemoveCache(key = {@CacheKey(template = "ddd", simple = true)})
     @Cache(key = @CacheKey(template = "ddd", simple = true))
     public void testM1(){
 

@@ -18,12 +18,13 @@ public @interface RemoveCache {
 
     String type() default "";
 
-//    public boolean layerd() default true;
+    boolean invokeBefore() default false;
 
     boolean markAsNull() default false;
 
     int expire() default 0;
 
     String expireTime() default "";
+
 
 }

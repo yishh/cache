@@ -7,15 +7,14 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
 /**
- *
  * User: liweijing
  * Date: 11-11-25
  * Time: 上午9:21
- *
  */
 public abstract class AbstractInterceptor implements CacheInterceptor {
 //    protected  com.google.common.cache.Cache<String, Object> localCache = CacheBuilder.newBuilder()
@@ -199,6 +198,7 @@ public abstract class AbstractInterceptor implements CacheInterceptor {
         firstInvoke.get().push(pushed);
         try {
             Annotation[] annotations = method.getAnnotations();
+            RemoveCache delayedAnnotation = null;
             for (Annotation annotation : annotations) {
                 if (annotation instanceof SimpleCache) {
                     SimpleCache a = (SimpleCache) annotation;
@@ -213,10 +213,18 @@ public abstract class AbstractInterceptor implements CacheInterceptor {
                 } else if (annotation instanceof WriteCache) {
                     return writeCache((WriteCache) annotation, obj, method, args, proxy);
                 } else if (annotation instanceof RemoveCache) {
-                     removeCache((RemoveCache) annotation, obj, method, args, proxy);
+                    if (((RemoveCache) annotation).invokeBefore()){
+                        removeCache((RemoveCache) annotation, obj, method, args, proxy);
+                    }else {
+                        delayedAnnotation = (RemoveCache) annotation;
+                    }
                 }
             }
-            return proxy.invokeSuper(obj, args);
+            Object returned =  proxy.invokeSuper(obj, args);
+            if(delayedAnnotation != null){
+                removeCache(delayedAnnotation, obj, method, args, proxy);
+            }
+            return returned;
         } finally {
             firstInvoke.get().pop();
         }
