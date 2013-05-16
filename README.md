@@ -155,7 +155,7 @@ Cache框架通过Spring配置的拦截器来实现缓存的快捷操作，目前
 	
 	在调用这个方法是移除指定key对应的缓存。参数如下:
 	
-		CacheKey[] key();              //同@CacheKey
+		CacheKey[] key();              //同@CacheKey ,这里的key可以是多个
     	String type() default "";       //同@CacheKey
 		boolean markAsNull() default false;    //是否将改key对应的缓存数据标记为null数据
 		int expire() default 0;          //同@CacheKey
