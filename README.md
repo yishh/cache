@@ -186,14 +186,6 @@ Cache框架通过Spring配置的拦截器来实现缓存的快捷操作，目前
 
 
 ## 注解的混合使用
-
-只有@RemoveCache可以在同一方法上注解多个，如下:
-
-		@RemoveCache(key = @CacheKey(template = "ddd", simple = true))
-   	 	@RemoveCache(key = @CacheKey(template = "fff", simple = true))
-    	public void testM1(){
-
-    	}
     	
 @RemoveCache还可以和其他的注解一起使用，但是必须写在最前面，如下:
 
