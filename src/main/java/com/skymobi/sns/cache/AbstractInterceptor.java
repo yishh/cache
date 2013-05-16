@@ -199,19 +199,26 @@ public abstract class AbstractInterceptor implements CacheInterceptor {
         try {
             Annotation[] annotations = method.getAnnotations();
             RemoveCache delayedAnnotation = null;
+            Object returned = null;
+            boolean methodInvoked = false;
             for (Annotation annotation : annotations) {
                 if (annotation instanceof SimpleCache) {
                     SimpleCache a = (SimpleCache) annotation;
-                    return doSimpleCache(a, obj, method, args, proxy);
+                    returned = doSimpleCache(a, obj, method, args, proxy);
+                    methodInvoked = true;
                 } else if (annotation instanceof Cache) {
                     Cache a = (Cache) annotation;
-                    return doCache(a, obj, method, args, proxy);
+                    returned = doCache(a, obj, method, args, proxy);
+                    methodInvoked = true;
                 } else if (annotation instanceof ListedCache) {
-                    return doListCache((ListedCache) annotation, obj, method, args, proxy);
+                    returned = doListCache((ListedCache) annotation, obj, method, args, proxy);
+                    methodInvoked = true;
                 } else if (annotation instanceof WriteListCache) {
-                    return writeListCache((WriteListCache) annotation, obj, method, args, proxy);
+                    returned = writeListCache((WriteListCache) annotation, obj, method, args, proxy);
+                    methodInvoked = true;
                 } else if (annotation instanceof WriteCache) {
-                    return writeCache((WriteCache) annotation, obj, method, args, proxy);
+                    returned = writeCache((WriteCache) annotation, obj, method, args, proxy);
+                    methodInvoked = true;
                 } else if (annotation instanceof RemoveCache) {
                     if (((RemoveCache) annotation).invokeBefore()){
                         removeCache((RemoveCache) annotation, obj, method, args, proxy);
@@ -220,7 +227,8 @@ public abstract class AbstractInterceptor implements CacheInterceptor {
                     }
                 }
             }
-            Object returned =  proxy.invokeSuper(obj, args);
+            if(!methodInvoked)
+                returned =  proxy.invokeSuper(obj, args);
             if(delayedAnnotation != null){
                 removeCache(delayedAnnotation, obj, method, args, proxy);
             }
